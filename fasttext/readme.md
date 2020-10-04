@@ -466,3 +466,63 @@ real NegativeSamplingLoss::forward(
   return loss;
 }
 ```
+
+## 疑问
+1. 最大词表大小，当词表大小达到最大值的0.75，就会进行一次word过滤
+2. discard采样函数和word2vec论文不一样
+3. discard采样后生成的序列问题
+## 附录
+### C++相关
+1. std::uniform_int_distribution
+随机函数使用，一般先需要定义随机函数引擎，比如可以直接使用minstd_rand0 或 minstd_rand来定义，其产生的随机数的范围是[1,2147483646]之间，然后定义随机函数，最后使用。
+在model.h中Model::State::rng定义了随机函数引擎：
+std::minstd_rand rng; //定义引擎
+Fasttext::skipgram中如下使用：
+std::uniform_int_distribution<> uniform(1, args_->ws); //定义随机函数
+int32_t boundary = uniform(state.rng); //使用
+2. std::shared_ptr/std::make_shared
+std::shared_ptr指向特定类型的对象，用于自动释放所指向的对象，一个最安全的分配和使用动态内存的方法是调用一个名为make_shared的函数。
+std::make_shared在动态内存中分配一个对象并初始化它，返回指向此对象的shared_ptr
+当要使用make_shared时，必须指定想要创建的对象，定义方式与模板类相同，在函数名之后跟一个尖括号，在其中给出类型。
+std::shared_ptr<Model> model_;
+model_ = std::make_shared<Model>(input_, output_, loss, normalizeGradient);
+3. C++类的构造函数后面加:
+构造函数后加单冒号的作用是初始化列表，对类成员变量初始化
+比如下面：
+声明
+```c++
+class Model {
+ protected:
+  std::shared_ptr<Matrix> wi_;
+  std::shared_ptr<Matrix> wo_;
+  std::shared_ptr<Loss> loss_;
+  bool normalizeGradient_;
+ public:
+  Model(
+      std::shared_ptr<Matrix> wi,
+      std::shared_ptr<Matrix> wo,
+      std::shared_ptr<Loss> loss,
+      bool normalizeGradient);
+}
+```
+定义
+```c++
+Model::Model(
+    std::shared_ptr<Matrix> wi,
+    std::shared_ptr<Matrix> wo,
+    std::shared_ptr<Loss> loss,
+    bool normalizeGradient)
+    : wi_(wi), wo_(wo), loss_(loss), normalizeGradient_(normalizeGradient) {}
+```
+4. C++文件流
+fstream,ifstream,ostream
+ ifstream -- 从已有的文件读
+ ofstream -- 向文件写内容
+ fstream - 打开文件供读写
+对应的函数seekp:设置输出文件流指针位置，seekg：设置输入文件流指针位置。
+### 一些知识点
+1. (word[i] & 0xC0) == 0x80
+0xc0对应二进制为11000000，word[i] & 0xC0即获取字节的前两位，0x80对应的二进制是10000000，==表示字节的前两位是否为10。而在utf编码中，字节的二进制表示中以10开头的字节都是多字节序列的后续字节。一个字节占8位，utf8编码中数字/英文占一个字节，汉字占3个到4个字节。
+
+
+**阅读源码的方式：先大体的按其执行脚本过一遍，只需了解代码大体结构，函数作用即可，后面需要按代码结构反复阅读若干遍来弄懂细节。切勿一上来就把每个函数及其所有作用都搞懂。**
