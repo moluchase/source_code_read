@@ -1,4 +1,3 @@
 # source_code_read
-source code notes 
-
+## embedding
 fasttext
